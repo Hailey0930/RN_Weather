@@ -1,14 +1,41 @@
+import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Dimensions } from "react-native";
+import * as Location from "expo-location";
 
 // NOTE 해당 기기의 넓이값 가져오기
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function App() {
+  const [city, setCity] = useState("Loading...");
+  const [location, setLocation] = useState(null);
+  const [ok, setOk] = useState(true);
+
+  const ask = async () => {
+    const { granted } = await Location.requestForegroundPermissionsAsync();
+    if (!granted) {
+      setOk(false);
+    }
+
+    const {
+      coords: { latitude, longitude },
+    } = await Location.getCurrentPositionAsync({ accuracy: 5 });
+
+    const location = await Location.reverseGeocodeAsync(
+      { latitude, longitude },
+      { useGoogleMaps: false }
+    );
+    setCity(location[0].city);
+  };
+
+  useEffect(() => {
+    ask();
+  }, []);
+
   // NOTE RN에서는 flexDirection 기본값이 column
   return (
     <View style={styles.container}>
       <View style={styles.city}>
-        <Text style={styles.cityName}>서울</Text>
+        <Text style={styles.cityName}>{city}</Text>
       </View>
       <ScrollView
         // 가로 스크롤
