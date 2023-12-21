@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
 import * as Location from "expo-location";
 
 // NOTE 해당 기기의 넓이값 가져오기
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+const API_KEY = "145ac9e4880d44e525c972645ffa6a9d";
+
 export default function App() {
   const [city, setCity] = useState("Loading...");
-  const [location, setLocation] = useState(null);
   const [ok, setOk] = useState(true);
+  const [days, setDays] = useState([]);
 
-  const ask = async () => {
+  const getWeather = async () => {
     const { granted } = await Location.requestForegroundPermissionsAsync();
     if (!granted) {
       setOk(false);
@@ -25,10 +34,22 @@ export default function App() {
       { useGoogleMaps: false }
     );
     setCity(location[0].city);
+
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&exclude={alerts}&appid=${API_KEY}&units=metric`
+    );
+    const json = await response.json();
+    setDays(
+      json.list.filter((weather) => {
+        if (weather.dt_txt.includes("00:00:00")) {
+          return weather;
+        }
+      })
+    );
   };
 
   useEffect(() => {
-    ask();
+    getWeather();
   }, []);
 
   // NOTE RN에서는 flexDirection 기본값이 column
@@ -48,22 +69,21 @@ export default function App() {
         // indicatorStyle="white"
         contentContainerStyle={styles.weather}
       >
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
+        {days.length === 0 ? (
+          <View style={styles.day}>
+            <ActivityIndicator color="white" size="large" />
+          </View>
+        ) : (
+          days.map((day, index) => (
+            <View key={index} style={styles.day}>
+              <Text style={styles.temp}>
+                {parseFloat(day.main.temp).toFixed(1)}
+              </Text>
+              <Text style={styles.description}>{day.weather[0].main}</Text>
+              <Text style={styles.tinyText}>{day.weather[0].description}</Text>
+            </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -90,11 +110,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   temp: {
-    fontSize: 178,
-    marginTop: 50,
+    fontSize: 150,
+    marginTop: 30,
   },
   description: {
     fontSize: 60,
     marginTop: -30,
+  },
+  tinyText: {
+    fontSize: 20,
   },
 });
